@@ -219,12 +219,14 @@
     background:transparent;
     border:none;
     color: var(--chalk);
-    opacity:0.55;
+    opacity:0.75;
     padding: 10px 16px 14px;
     cursor:pointer;
     border-bottom: 3px solid transparent;
     white-space:nowrap;
+    transition: opacity .15s;
   }
+  .tab:hover{ opacity:0.95; }
   .tab.active{ opacity:1; border-bottom-color: var(--mustard); }
   .tab-panel{ display:none; }
   .tab-panel.active{ display:block; }
@@ -290,13 +292,19 @@
   .filter-checkbox{
     display:flex;
     align-items:center;
-    gap:6px;
-    font-size:0.82rem;
+    gap:8px;
+    font-size:0.85rem;
+    font-weight:600;
     color: var(--chalk);
-    opacity:0.9;
     cursor:pointer;
+    background: rgba(242,239,230,0.1);
+    border: 1.5px solid rgba(242,239,230,0.25);
+    border-radius: 8px;
+    padding: 7px 12px;
+    transition: background .15s;
   }
-  .filter-checkbox input{ width:auto; }
+  .filter-checkbox:hover{ background: rgba(242,239,230,0.16); }
+  .filter-checkbox input{ width:16px; height:16px; cursor:pointer; accent-color: var(--mustard); flex-shrink:0; }
 
   .empty-state{
     text-align:center;
@@ -362,6 +370,13 @@
     box-shadow: 0 14px 30px rgba(0,0,0,0.3);
     max-width: 520px;
     margin: 0 auto;
+  }
+  .recipe-card.just-revealed{
+    animation: card-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  @keyframes card-pop{
+    0%{ transform: scale(0.92); opacity:0; }
+    100%{ transform: scale(1); opacity:1; }
   }
   .recipe-card h3{
     font-family:'Caveat', cursive;
@@ -1157,9 +1172,10 @@
     var a = (angleDeg - 90) * Math.PI / 180;
     return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
   }
-  function truncateLabel(name){
-    if(name.length <= 16) return name;
-    return name.slice(0, 14).trim() + '…';
+  function truncateLabel(name, maxChars){
+    maxChars = maxChars || 14;
+    if(name.length <= maxChars) return name;
+    return name.slice(0, maxChars - 1).trim() + '…';
   }
 
   function buildWheelSVG(recipes){
@@ -1176,17 +1192,32 @@
     // handle the single-recipe case with a plain <circle> element.
     if(n === 1){
       var color = WHEEL_COLORS[0];
-      var label = esc(truncateLabel(recipes[0].name));
+      var label = esc(truncateLabel(recipes[0].name, 18));
       return '<svg viewBox="0 0 ' + WHEEL_SIZE + ' ' + WHEEL_SIZE + '" xmlns="http://www.w3.org/2000/svg">'
         + '<g id="wheel-g">'
           + '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + color + '" stroke="#2B3B35" stroke-width="2"/>'
-          + '<text x="' + cx + '" y="' + (cy - 28) + '" text-anchor="middle" dominant-baseline="middle" font-family="Caveat" font-weight="700" font-size="18" fill="#2B3B35">' + label + '</text>'
+          + '<text x="' + cx + '" y="' + (cy - 28) + '" text-anchor="middle" dominant-baseline="middle" font-family="Caveat" font-weight="700" font-size="20" fill="#2B3B35">' + label + '</text>'
         + '</g>'
         + '<circle cx="' + cx + '" cy="' + cy + '" r="44" fill="#F2EFE6" stroke="#2B3B35" stroke-width="2"/>'
         + '</svg>';
     }
 
     var seg = 360 / n;
+
+    // Scale font size and label length based on number of segments
+    var fontSize, maxChars, labelR;
+    if(n <= 6){
+      fontSize = 15; maxChars = 14; labelR = r * 0.60;
+    } else if(n <= 10){
+      fontSize = 13; maxChars = 11; labelR = r * 0.62;
+    } else if(n <= 16){
+      fontSize = 11; maxChars = 9; labelR = r * 0.64;
+    } else if(n <= 24){
+      fontSize = 9; maxChars = 7; labelR = r * 0.66;
+    } else {
+      fontSize = 8; maxChars = 5; labelR = r * 0.68;
+    }
+
     var paths = '', labels = '';
 
     for(var i = 0; i < n; i++){
@@ -1199,16 +1230,26 @@
         + ' A' + r + ',' + r + ' 0 ' + largeArc + ' 1 ' + p2[0].toFixed(2) + ',' + p2[1].toFixed(2)
         + ' Z" fill="' + segColor + '" stroke="#2B3B35" stroke-width="2"/>';
 
+      // Place label at the midpoint angle, radially along the segment
       var mid = startA + seg/2;
-      var labelR = r * 0.62;
       var lp = polar(cx, cy, labelR, mid);
-      var rot = mid;
-      if(rot > 90 && rot < 270){ rot += 180; }
-      var segLabel = esc(truncateLabel(recipes[i].name));
+
+      // Rotate text so it reads outward from center; flip bottom half so text is never upside-down
+      var rot = mid; // mid goes 0..360; subtract 90 is already handled by polar()
+      // The text should point outward along the radius. Angle in SVG rotate = clockwise from +x.
+      // Our polar() already accounts for -90 offset, so the radial direction at 'mid' degrees
+      // (where 0 = top) is: SVG angle = mid - 90
+      var textRotation = mid - 90;
+      // For segments in the left half (pointing left), flip 180° so text reads left-to-right
+      if(mid > 180 && mid <= 360){
+        textRotation += 180;
+      }
+
+      var segLabel = esc(truncateLabel(recipes[i].name, maxChars));
       labels += '<text x="' + lp[0].toFixed(2) + '" y="' + lp[1].toFixed(2) + '" '
-        + 'transform="rotate(' + rot.toFixed(2) + ' ' + lp[0].toFixed(2) + ' ' + lp[1].toFixed(2) + ')" '
+        + 'transform="rotate(' + textRotation.toFixed(2) + ' ' + lp[0].toFixed(2) + ' ' + lp[1].toFixed(2) + ')" '
         + 'text-anchor="middle" dominant-baseline="middle" '
-        + 'font-family="Caveat" font-weight="700" font-size="15" fill="#2B3B35">' + segLabel + '</text>';
+        + 'font-family="Caveat" font-weight="700" font-size="' + fontSize + '" fill="#2B3B35">' + segLabel + '</text>';
     }
 
     return '<svg viewBox="0 0 ' + WHEEL_SIZE + ' ' + WHEEL_SIZE + '" xmlns="http://www.w3.org/2000/svg">'
@@ -1299,7 +1340,7 @@
       } else if(info.pool.length < state.recipes.length){
         note.textContent = 'Spinning from ' + info.pool.length + ' of ' + state.recipes.length + ' recipes.';
       } else {
-        note.textContent = '';
+        note.textContent = info.pool.length + ' recipes on the wheel.';
       }
     }
   }
@@ -1390,7 +1431,12 @@
     var card = document.getElementById('result-card');
     card.innerHTML = recipeCardHTML(recipe);
     card.classList.remove('hidden');
-    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    card.classList.remove('just-revealed');
+    void card.offsetWidth; // force reflow to restart animation
+    card.classList.add('just-revealed');
+    setTimeout(function(){
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   }
 
   // ---------------------------------------------------------------
