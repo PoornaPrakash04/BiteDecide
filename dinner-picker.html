@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tonight's Dinner — Random Dinner Picker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --chalk-bg:#2B3B35;
+    --chalk-bg-light:#3A4F47;
+    --chalk-line: rgba(242,239,230,0.18);
+    --paper:#FBF6EC;
+    --paper-dark:#F0E7D4;
+    --ink:#2B3B35;
+    --ink-soft:#5C6B64;
+    --mustard:#E8AE3E;
+    --mustard-dark:#C8932A;
+    --rust:#C75D43;
+    --sage:#7FA77A;
+    --plum:#8C5C7E;
+    --teal:#5C8C9C;
+    --chalk:#F2EFE6;
+  }
+
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    font-family:'Work Sans', sans-serif;
+    background: var(--chalk-bg);
+    color: var(--chalk);
+    min-height:100vh;
+  }
+  .display{ font-family:'Caveat', cursive; }
+
+  .hidden{ display:none !important; }
+
+  /* ---------- Login screen ---------- */
+  .screen{ min-height:100vh; }
+  #login-view{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(242,239,230,0.04) 0, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(242,239,230,0.04) 0, transparent 40%),
+      var(--chalk-bg);
+  }
+  .login-card{
+    background: var(--paper);
+    color: var(--ink);
+    width:100%;
+    max-width: 400px;
+    border-radius: 18px 18px 22px 22px;
+    padding: 32px 28px;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.04);
+  }
+  .login-card .brand{
+    font-size: 3rem;
+    font-weight:700;
+    margin: 0 0 2px;
+    line-height:1;
+    color: var(--rust);
+  }
+  .login-card .tagline{
+    margin:0 0 22px;
+    color: var(--ink-soft);
+    font-size:0.95rem;
+  }
+  .auth-tabs{
+    display:flex;
+    gap:6px;
+    margin-bottom:18px;
+    background: var(--paper-dark);
+    border-radius:10px;
+    padding:4px;
+  }
+  .auth-tab{
+    flex:1;
+    border:none;
+    background:transparent;
+    padding:9px 10px;
+    border-radius:8px;
+    font-weight:600;
+    font-family:inherit;
+    font-size:0.92rem;
+    color: var(--ink-soft);
+    cursor:pointer;
+    transition: background .15s, color .15s;
+  }
+  .auth-tab.active{
+    background: var(--ink);
+    color: var(--chalk);
+  }
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin-bottom:14px;
+  }
+  .field label{
+    font-size:0.85rem;
+    font-weight:600;
+    color: var(--ink-soft);
+  }
+  input, select, textarea{
+    font-family:inherit;
+    font-size:0.97rem;
+    padding:10px 12px;
+    border-radius:8px;
+    border:1.5px solid #D9CFB8;
+    background:#fff;
+    color: var(--ink);
+    outline:none;
+    width:100%;
+  }
+  input:focus, select:focus, textarea:focus{
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(92,140,156,0.18);
+  }
+  textarea{ resize: vertical; min-height: 80px; line-height:1.5; }
+
+  .btn{
+    font-family:inherit;
+    font-weight:700;
+    font-size:0.95rem;
+    border:none;
+    border-radius:10px;
+    padding:11px 18px;
+    cursor:pointer;
+    transition: transform .08s ease, filter .15s ease, background .15s ease;
+  }
+  .btn:active{ transform: translateY(1px); }
+  .btn-primary{ background: var(--mustard); color: var(--ink); }
+  .btn-primary:hover{ background: var(--mustard-dark); }
+  .btn-primary:disabled{ filter: grayscale(0.6); opacity:0.6; cursor:not-allowed; }
+  .btn-ghost{ background: transparent; color: var(--chalk); border:1.5px solid var(--chalk-line); }
+  .btn-ghost:hover{ background: rgba(242,239,230,0.08); }
+  .btn-secondary{ background: var(--teal); color:#fff; }
+  .btn-secondary:hover{ filter: brightness(1.08); }
+  .btn-danger{ background: var(--rust); color:#fff; }
+  .btn-danger:hover{ filter: brightness(1.08); }
+  .btn-outline{ background:transparent; border:1.5px solid #D9CFB8; color: var(--ink); }
+  .btn-outline:hover{ background: var(--paper-dark); }
+  .btn-large{ padding:14px 30px; font-size:1.05rem; }
+  .btn-block{ width:100%; }
+
+  .link-btn{
+    display:block;
+    margin: 12px auto 0;
+    background:none;
+    border:none;
+    color: var(--teal);
+    font-family:inherit;
+    font-size:0.85rem;
+    font-weight:600;
+    cursor:pointer;
+    text-decoration: underline;
+  }
+
+  .error{
+    background: #FBE6E1;
+    color: #9A3B26;
+    border-radius:8px;
+    padding:9px 12px;
+    font-size:0.86rem;
+    margin-bottom:12px;
+  }
+  .message{
+    background: #E7F0E2;
+    color: #3E5C36;
+    border-radius:8px;
+    padding:9px 12px;
+    font-size:0.86rem;
+    margin-bottom:12px;
+  }
+  .toast{ background: #FBE6E1; color: var(--ink); }
+
+  /* ---------- Main app ---------- */
+  #main-view{ max-width: 920px; margin: 0 auto; padding: 0 16px 60px; }
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    padding: 22px 4px 14px;
+  }
+  .brand-small{
+    font-family:'Caveat', cursive;
+    font-size:2.1rem;
+    font-weight:700;
+    color: var(--mustard);
+  }
+  .user-info{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-size:0.88rem;
+    color: var(--chalk);
+    opacity:0.85;
+  }
+
+  .tabs{
+    display:flex;
+    gap:6px;
+    border-bottom: 1px solid var(--chalk-line);
+    margin-bottom: 22px;
+    overflow-x:auto;
+  }
+  .tab{
+    font-family:inherit;
+    font-weight:700;
+    font-size:0.95rem;
+    background:transparent;
+    border:none;
+    color: var(--chalk);
+    opacity:0.55;
+    padding: 10px 16px 14px;
+    cursor:pointer;
+    border-bottom: 3px solid transparent;
+    white-space:nowrap;
+  }
+  .tab.active{ opacity:1; border-bottom-color: var(--mustard); }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
+  /* ---------- Spin wheel ---------- */
+  .wheel-area{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    margin-bottom: 18px;
+  }
+  .wheel-frame{ position:relative; width: min(78vw, 340px); }
+  .pointer{
+    position:absolute;
+    top:-14px;
+    left:50%;
+    transform: translateX(-50%);
+    font-size:2rem;
+    z-index:4;
+    filter: drop-shadow(0 3px 3px rgba(0,0,0,0.35));
+  }
+  /* Spin button sits in the center of the wheel */
+  .spin-center-btn{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform: translate(-50%, -50%);
+    z-index:3;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    font-size:0.95rem;
+    font-weight:800;
+    padding:0;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 0 4px #fff;
+    transition: transform .08s ease, filter .15s ease, background .15s ease;
+    letter-spacing:0.02em;
+  }
+  .spin-center-btn:active{ transform: translate(-50%, -50%) scale(0.94); }
+  .spin-center-btn:disabled{ filter: grayscale(0.5); opacity:0.7; cursor:not-allowed; }
+
+  .spin-pool-note{ text-align:center; font-size:0.82rem; color:var(--chalk); opacity:0.7; margin:10px 0 6px; min-height:1.2em; }
+  #wheel-wrap{ width:100%; }
+  #wheel-wrap svg{ width:100%; height:auto; display:block; }
+  #wheel-g{ transform-origin: 160px 160px; transform: rotate(0deg); }
+
+  /* ---------- Smart-spin filters ---------- */
+  .spin-filters{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+    justify-content:center;
+    margin: 0 0 16px;
+  }
+  .spin-filters select{
+    width:auto;
+    background: var(--paper);
+    color: var(--ink);
+    font-size:0.85rem;
+    padding:8px 10px;
+  }
+  .filter-checkbox{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:0.82rem;
+    color: var(--chalk);
+    opacity:0.9;
+    cursor:pointer;
+  }
+  .filter-checkbox input{ width:auto; }
+
+  .empty-state{
+    text-align:center;
+    background: rgba(242,239,230,0.06);
+    border: 1.5px dashed var(--chalk-line);
+    border-radius: 14px;
+    padding: 28px 20px;
+    color: var(--chalk);
+    opacity:0.85;
+    font-size:0.95rem;
+  }
+  .empty-state .btn{ margin-top:12px; }
+
+  /* ---------- Recipe photos ---------- */
+  .btn-small{ padding:6px 10px; font-size:0.78rem; }
+  .photo-preview-wrap{
+    margin-top:10px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .photo-preview-wrap.hidden{ display:none; }
+  .photo-preview{
+    width:90px;
+    height:90px;
+    object-fit:cover;
+    border-radius:10px;
+    border:1.5px solid #D9CFB8;
+  }
+  .recipe-photo{
+    width:100%;
+    max-height:220px;
+    object-fit:cover;
+    border-radius:10px;
+    margin-bottom:14px;
+  }
+  .recipe-thumb{
+    width:56px;
+    height:56px;
+    object-fit:cover;
+    border-radius:8px;
+    flex-shrink:0;
+  }
+  .recipe-item-main{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .day-photo{
+    width:100%;
+    max-height:140px;
+    object-fit:cover;
+    border-radius:8px;
+    margin-bottom:8px;
+  }
+
+  /* ---------- Recipe card ---------- */
+  .recipe-card{
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 14px;
+    padding: 22px 24px;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.3);
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  .recipe-card h3{
+    font-family:'Caveat', cursive;
+    font-size:2.2rem;
+    margin: 0 0 6px;
+    line-height:1.1;
+    color: var(--rust);
+  }
+  .recipe-meta{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 14px; }
+  .badge{
+    display:inline-block;
+    font-size:0.78rem;
+    font-weight:700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--paper-dark);
+    color: var(--ink-soft);
+  }
+  .badge.cat{ background: rgba(140,92,126,0.16); color: var(--plum); }
+  .badge.time{ background: rgba(92,140,156,0.16); color: var(--teal); }
+  .recipe-card h4{
+    font-size:0.8rem;
+    text-transform: uppercase;
+    letter-spacing:0.08em;
+    color: var(--ink-soft);
+    margin: 16px 0 8px;
+  }
+  .recipe-card ul, .recipe-card ol{ margin:0; padding-left: 22px; line-height:1.6; font-size:0.94rem; }
+  .recipe-card ul li{ margin-bottom:4px; }
+  .recipe-card ol li{ margin-bottom:8px; }
+
+  /* ---------- Recipes tab ---------- */
+  .recipes-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom: 16px;
+  }
+  .recipes-header h2{ margin:0; font-family:'Caveat',cursive; font-size:2rem; }
+
+  .form-panel{
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+  }
+  .form-panel h3{
+    margin: 0 0 14px;
+    font-family:'Caveat', cursive;
+    font-size:1.7rem;
+    color: var(--rust);
+  }
+  .field-row{ display:flex; gap:12px; flex-wrap:wrap; }
+  .field-row .field{ flex:1; min-width: 140px; }
+  .form-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top: 6px; }
+  .hint{ font-size:0.85rem; opacity:0.8; margin: -6px 0 16px; }
+
+  .recipes-list{ display:flex; flex-direction:column; gap:12px; }
+  .recipe-item{
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 12px;
+    padding: 14px 16px;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+  }
+  .recipe-item:nth-child(odd){ transform: rotate(-0.4deg); }
+  .recipe-item:nth-child(even){ transform: rotate(0.4deg); }
+  .recipe-item-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+    cursor:pointer;
+  }
+  .recipe-item-title{ font-family:'Caveat', cursive; font-size:1.5rem; font-weight:700; }
+  .recipe-item-actions{ display:flex; gap:6px; flex-shrink:0; }
+  .recipe-item-actions .btn{ padding:7px 12px; font-size:0.8rem; }
+  .recipe-item-body{ margin-top: 12px; border-top: 1px dashed #D9CFB8; padding-top: 12px; }
+  .recipe-item-body.hidden{ display:none; }
+
+  /* ---------- Weekly plan ---------- */
+  .plan-heading{ font-family:'Caveat',cursive; font-size:2rem; margin:0 0 4px; }
+  .plan-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .day-card{
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 12px;
+    padding: 14px 16px;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+  }
+  .day-card:nth-child(odd){ transform: rotate(-0.3deg); }
+  .day-card:nth-child(even){ transform: rotate(0.3deg); }
+  .day-name{
+    font-family:'Caveat', cursive;
+    font-size:1.6rem;
+    font-weight:700;
+    color: var(--rust);
+    margin: 0 0 8px;
+  }
+  .day-dish{ font-weight:600; font-size:0.95rem; margin-bottom:10px; min-height:1.4em; }
+  .day-dish.empty{ color: var(--ink-soft); font-weight:400; font-style:italic; }
+  .day-actions{ display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .day-actions .btn{ padding:7px 10px; font-size:0.78rem; flex:1; }
+  .day-recipe-detail{ margin-top:10px; border-top:1px dashed #D9CFB8; padding-top:10px; font-size:0.85rem; }
+  .day-recipe-detail.hidden{ display:none; }
+  .day-recipe-detail h5{
+    margin: 8px 0 4px;
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color: var(--ink-soft);
+  }
+  .day-recipe-detail ul, .day-recipe-detail ol{ margin:0; padding-left:18px; line-height:1.5; }
+
+  /* ---------- Toast ---------- */
+  #toast-wrap{
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    pointer-events:none;
+  }
+  .toast{
+    font-size:0.88rem;
+    font-weight:600;
+    padding: 10px 18px;
+    border-radius: 999px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    opacity:0;
+    transform: translateY(10px);
+    transition: opacity .25s, transform .25s;
+    background: var(--sage);
+    color: var(--ink);
+  }
+  .toast.show{ opacity:1; transform: translateY(0); }
+
+  @media (max-width: 480px){
+    .login-card{ padding:24px 18px; }
+    .login-card .brand{ font-size:2.4rem; }
+    .recipe-card{ padding:18px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="toast-wrap"><div id="toast" class="toast"></div></div>
+
+<!-- ================= LOGIN VIEW ================= -->
+<div id="login-view" class="screen">
+  <div class="login-card">
+    <h1 class="brand">Tonight's Dinner</h1>
+    <p class="tagline">Spin the wheel. Cook something good.</p>
+
+    <div class="auth-tabs">
+      <button id="tab-login" class="auth-tab active" type="button">Log in</button>
+      <button id="tab-signup" class="auth-tab" type="button">Create account</button>
+    </div>
+
+    <div id="config-warning" class="error hidden"></div>
+
+    <form id="auth-form">
+      <div class="field">
+        <label for="auth-email">Email</label>
+        <input type="email" id="auth-email" required autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="auth-password">Password</label>
+        <input type="password" id="auth-password" required minlength="6" autocomplete="current-password">
+      </div>
+      <div id="auth-error" class="error hidden"></div>
+      <div id="auth-message" class="message hidden"></div>
+      <button type="submit" id="auth-submit" class="btn btn-primary btn-block">Log in</button>
+      <button type="button" id="forgot-password-btn" class="link-btn">Forgot password?</button>
+    </form>
+  </div>
+
+  <!-- Shown instead of the form when the user arrives via a password-reset email link -->
+  <div id="reset-card" class="login-card hidden">
+    <h1 class="brand">Set a new password</h1>
+    <p class="tagline">Choose a new password for your account.</p>
+    <form id="reset-form">
+      <div class="field">
+        <label for="reset-password">New password</label>
+        <input type="password" id="reset-password" required minlength="6" autocomplete="new-password">
+      </div>
+      <div id="reset-error" class="error hidden"></div>
+      <button type="submit" class="btn btn-primary btn-block">Update password</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= MAIN APP ================= -->
+<div id="main-view" class="screen hidden">
+  <header class="topbar">
+    <div class="brand-small">🍽 Tonight's Dinner</div>
+    <div class="user-info">
+      <span id="user-email-label"></span>
+      <button id="logout-btn" class="btn btn-ghost">Log out</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="spin">Spin Wheel</button>
+    <button class="tab" data-tab="recipes">My Recipes</button>
+    <button class="tab" data-tab="plan">Weekly Plan</button>
+  </nav>
+
+  <!-- SPIN TAB -->
+  <section id="tab-spin" class="tab-panel active">
+    <div class="spin-filters">
+      <select id="filter-category" aria-label="Filter by category"></select>
+      <select id="filter-time" aria-label="Filter by max time">
+        <option value="0">Any time</option>
+        <option value="15">Under 15 min</option>
+        <option value="30">Under 30 min</option>
+        <option value="45">Under 45 min</option>
+        <option value="60">Under 60 min</option>
+      </select>
+      <label class="filter-checkbox">
+        <input type="checkbox" id="filter-avoid-recent" checked>
+        Avoid dishes cooked in the last 3 days
+      </label>
+    </div>
+    <div class="wheel-area">
+      <div class="wheel-frame">
+        <div class="pointer">🔻</div>
+        <div id="wheel-wrap"></div>
+        <button id="spin-btn" class="btn btn-primary spin-center-btn">Spin</button>
+      </div>
+    </div>
+    <div id="spin-pool-note" class="spin-pool-note"></div>
+    <div id="spin-empty" class="empty-state hidden">
+      <div class="empty-text">Your wheel is empty. Add a recipe to start spinning for dinner ideas.</div>
+      <button class="btn btn-primary" data-goto-tab="recipes">+ Add a recipe</button>
+    </div>
+    <div id="result-card" class="recipe-card hidden"></div>
+  </section>
+
+  <!-- RECIPES TAB -->
+  <section id="tab-recipes" class="tab-panel">
+    <div class="recipes-header">
+      <h2>My Recipes</h2>
+      <button id="add-recipe-btn" class="btn btn-primary">+ Add Recipe</button>
+    </div>
+
+    <div id="recipe-form-panel" class="form-panel hidden">
+      <h3 id="recipe-form-title">Add a recipe</h3>
+      <form id="recipe-form">
+        <input type="hidden" id="recipe-id">
+        <div class="field">
+          <label for="recipe-name">Dish name</label>
+          <input type="text" id="recipe-name" required placeholder="e.g. Spaghetti Aglio e Olio">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="recipe-category">Category / cuisine</label>
+            <input type="text" id="recipe-category" placeholder="e.g. Italian">
+          </div>
+          <div class="field">
+            <label for="recipe-time">Prep + cook time (minutes)</label>
+            <input type="number" id="recipe-time" min="0" placeholder="e.g. 30">
+          </div>
+        </div>
+        <div class="field">
+          <label for="recipe-ingredients">Ingredients (one per line)</label>
+          <textarea id="recipe-ingredients" placeholder="Spaghetti 200g&#10;Garlic, 4 cloves&#10;Olive oil, 60ml"></textarea>
+        </div>
+        <div class="field">
+          <label for="recipe-instructions">Instructions (one step per line)</label>
+          <textarea id="recipe-instructions" placeholder="Boil the pasta...&#10;Fry the garlic...&#10;Toss everything together..."></textarea>
+        </div>
+        <div class="field">
+          <label for="recipe-photo">Photo (optional, under 5MB)</label>
+          <input type="file" id="recipe-photo" accept="image/*">
+          <div id="recipe-photo-preview-wrap" class="photo-preview-wrap hidden">
+            <img id="recipe-photo-preview" class="photo-preview" alt="Recipe photo preview">
+            <button type="button" id="recipe-photo-remove-btn" class="btn btn-outline btn-small">Remove photo</button>
+          </div>
+          <input type="hidden" id="recipe-photo-path">
+        </div>
+        <div class="form-actions">
+          <button type="button" id="recipe-cancel-btn" class="btn btn-outline">Cancel</button>
+          <button type="submit" id="recipe-save-btn" class="btn btn-primary">Save recipe</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="recipes-list" class="recipes-list"></div>
+  </section>
+
+  <!-- WEEKLY PLAN TAB -->
+  <section id="tab-plan" class="tab-panel">
+    <h2 class="plan-heading">Weekly Plan</h2>
+    <p class="hint">Pick a dish for each day, or spin to decide for you. Changed your mind? Pick again or clear it any time.</p>
+    <div id="plan-grid" class="plan-grid"></div>
+  </section>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ===============================================================
+  // SUPABASE CONFIG — replace these two values with your own project's
+  // (Supabase dashboard -> Settings -> API). The anon key is meant to be
+  // public-facing; real protection comes from the Row Level Security
+  // policies in schema.sql, not from keeping this key secret.
+  // ===============================================================
+  const SUPABASE_URL = 'https://ioeqtpwflamorbvzpcev.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_jXY2GduBW-G1R5Plo025ZQ_0dYDGMYf';
+
+  const isConfigured = !SUPABASE_URL.includes('your-project-ref')
+    && !SUPABASE_ANON_KEY.includes('your-anon-public-key');
+
+  const { createClient } = window.supabase || {};
+  const sb = createClient ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+  if (!isConfigured) {
+    const warn = document.getElementById('config-warning');
+    warn.textContent = "This page hasn't been connected to a Supabase project yet. Open this HTML file, find SUPABASE_URL and SUPABASE_ANON_KEY near the top of the <script>, and fill in your project's values from Settings → API.";
+    warn.classList.remove('hidden');
+    document.getElementById('auth-submit').disabled = true;
+  }
+
+  // ---------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function linesToArray(text){
+    return String(text || '')
+      .split('\n')
+      .map(function(l){ return l.trim(); })
+      .filter(function(l){ return l.length > 0; });
+  }
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+  }
+
+  var DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+  // Starter recipes given to every brand-new account, once.
+  var DEFAULT_RECIPES = [
+    {
+      name: 'Loaded Fries', category: 'American', time: 30,
+      ingredients: ['Frozen french fries, 500g','Cheddar cheese, shredded, 150g','Bacon, 4 strips, cooked and crumbled','Sour cream, 60ml','Green onions, 2, chopped','Jalapeños, sliced, to taste (optional)','Salt, to taste'],
+      instructions: ['Bake the fries according to the package instructions until golden and crisp, about 20 minutes at 200°C/400°F.','While the fries bake, cook the bacon until crisp, then crumble it.','Pile the hot fries onto a tray and scatter the shredded cheese evenly over the top.','Return to the oven for 2-3 minutes, just until the cheese melts.','Top with crumbled bacon, a drizzle of sour cream, green onions, and jalapeños if using.','Serve immediately while hot.']
+    },
+    {
+      name: 'Garlic Butter Pasta', category: 'Italian', time: 20,
+      ingredients: ['Spaghetti or any pasta, 250g','Butter, 3 tbsp','Garlic, 4 cloves, minced','Parmesan, grated, 40g','Black pepper, to taste','Parsley, chopped, 2 tbsp','Salt, to taste'],
+      instructions: ['Boil the pasta in salted water until al dente, reserving half a cup of the pasta water before draining.','Melt the butter in a large pan over medium heat and add the garlic, cooking until fragrant but not browned.','Add the drained pasta to the pan with a splash of the reserved pasta water, tossing to coat.','Stir in the parmesan until it melts into a light sauce.','Season with black pepper and salt, finish with parsley, and serve warm.']
+    },
+    {
+      name: 'Chicken Biryani', category: 'Indian', time: 70,
+      ingredients: ['Basmati rice, 2 cups','Chicken, 500g, cut into pieces','Yogurt, 100g','Fried onions, 1 cup','Ginger-garlic paste, 2 tbsp','Biryani masala, 2 tbsp','Mint leaves, a handful','Coriander leaves, a handful','Ghee, 3 tbsp','Whole spices (bay leaf, cinnamon, cloves), a pinch each','Saffron or food color, a pinch','Salt, to taste'],
+      instructions: ['Marinate the chicken in yogurt, ginger-garlic paste, biryani masala, and salt for at least 30 minutes.','Soak the basmati rice for 20 minutes, then parboil it with the whole spices until about 70% cooked, and drain.','Cook the marinated chicken in ghee until just done, then layer the parboiled rice on top.','Scatter fried onions, mint, and coriander between the layers, and drizzle saffron or food color over the top.','Cover tightly and cook on low heat for 20-25 minutes until the rice is fully cooked and fragrant.','Gently fluff and mix before serving hot.']
+    },
+    {
+      name: 'Egg Fried Rice', category: 'Chinese', time: 20,
+      ingredients: ['Cooked rice, cold, 3 cups','Eggs, 2, beaten','Carrot, 1, diced','Peas, 1/2 cup','Spring onion, 2, chopped','Garlic, 2 cloves, minced','Soy sauce, 2 tbsp','Sesame oil, 1 tbsp','Vegetable oil, 2 tbsp','Salt and pepper, to taste'],
+      instructions: ['Heat half the oil in a wok over high heat, scramble the eggs until just set, then set aside.','Add the remaining oil and garlic, stirring briefly, then add the carrot and peas, cooking for 2-3 minutes.','Add the cold rice, breaking up any clumps, and stir-fry for a few minutes until heated through.','Return the scrambled egg to the wok, then add soy sauce and sesame oil, tossing everything together.','Finish with spring onion, season with salt and pepper, and serve hot.']
+    },
+    {
+      name: 'Veg Hakka Noodles', category: 'Asian', time: 25,
+      ingredients: ['Noodles, 200g','Cabbage, shredded, 1 cup','Carrot, julienned, 1','Bell pepper, sliced, 1','Spring onion, 2, chopped','Garlic, 3 cloves, minced','Soy sauce, 2 tbsp','Vinegar, 1 tsp','Chili sauce, 1 tsp (optional)','Vegetable oil, 2 tbsp','Salt and pepper, to taste'],
+      instructions: ['Boil the noodles according to the package instructions until just tender, then drain and toss with a little oil to prevent sticking.','Heat oil in a wok over high heat and stir-fry the garlic for a few seconds.','Add the cabbage, carrot, and bell pepper, stir-frying for 2-3 minutes until just softened.','Add the noodles to the wok along with soy sauce, vinegar, and chili sauce if using.','Toss everything together over high heat for another 2 minutes.','Finish with spring onion, season with salt and pepper, and serve immediately.']
+    },
+    {
+      name: 'Soft Chicken Tacos', category: 'Mexican', time: 30,
+      ingredients: ['Chicken breast, 400g, diced','Taco seasoning, 2 tbsp','Soft tortillas, 8','Lettuce, shredded, 1 cup','Tomato, 1, diced','Cheddar cheese, shredded, 100g','Sour cream, to serve','Lime, 1, cut into wedges','Vegetable oil, 1 tbsp'],
+      instructions: ['Toss the diced chicken with taco seasoning and a little oil.','Cook the chicken in a hot pan for 6-8 minutes, until browned and cooked through.','Warm the tortillas in a dry pan or microwave.','Fill each tortilla with chicken, lettuce, tomato, and cheese.','Top with sour cream and a squeeze of lime, then serve immediately.']
+    }
+  ];
+
+  // ---------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------
+  var state = {
+    user: null,
+    recipes: [],
+    weeklyPlan: {},
+    rotation: 0,
+    spinning: false,
+    spinFilters: { category: '', maxTime: 0, avoidRecent: true } // maxTime 0 = no limit
+  };
+
+  function recipeById(id){
+    return state.recipes.find(function(r){ return r.id === id; }) || null;
+  }
+
+  // ---------------------------------------------------------------
+  // Auth (Supabase Auth)
+  // ---------------------------------------------------------------
+  function signUp(email, password){ return sb.auth.signUp({ email, password }); }
+  function signIn(email, password){ return sb.auth.signInWithPassword({ email, password }); }
+  function signOut(){ return sb.auth.signOut(); }
+  async function getSession(){
+    var res = await sb.auth.getSession();
+    return res.data.session;
+  }
+  function requestPasswordReset(email){
+    return sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+  }
+  function updatePassword(newPassword){
+    return sb.auth.updateUser({ password: newPassword });
+  }
+
+  // ---------------------------------------------------------------
+  // Data access (recipes + weekly plan)
+  // ---------------------------------------------------------------
+  function rowToRecipe(row){
+    return {
+      id: row.id,
+      name: row.name,
+      category: row.category || '',
+      time: row.time_minutes || null,
+      ingredients: row.ingredients || [],
+      instructions: row.instructions || [],
+      photoPath: row.photo_path || null,
+      lastPickedAt: row.last_picked_at || null
+    };
+  }
+
+  async function fetchRecipes(){
+    var res = await sb.from('recipes').select('*').order('created_at', { ascending: true });
+    if (res.error) throw res.error;
+    return (res.data || []).map(rowToRecipe);
+  }
+
+  // Gives every brand-new account the 6 starter recipes exactly once,
+  // tracked via a tiny per-user flag in user_settings so deleting them
+  // later doesn't bring them back.
+  async function ensureDefaultRecipes(userId){
+    var settingsRes = await sb.from('user_settings')
+      .select('default_recipes_seeded')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (settingsRes.error) throw settingsRes.error;
+    if (settingsRes.data && settingsRes.data.default_recipes_seeded) return;
+
+    var rows = DEFAULT_RECIPES.map(function(r){
+      return {
+        user_id: userId,
+        name: r.name,
+        category: r.category || null,
+        time_minutes: r.time || null,
+        ingredients: r.ingredients || [],
+        instructions: r.instructions || []
+      };
+    });
+    var insertRes = await sb.from('recipes').insert(rows);
+    if (insertRes.error) throw insertRes.error;
+
+    var upsertRes = await sb.from('user_settings')
+      .upsert({ user_id: userId, default_recipes_seeded: true });
+    if (upsertRes.error) throw upsertRes.error;
+  }
+
+  async function createRecipe(userId, recipe){
+    var res = await sb.from('recipes').insert({
+      user_id: userId,
+      name: recipe.name,
+      category: recipe.category || null,
+      time_minutes: recipe.time || null,
+      ingredients: recipe.ingredients || [],
+      instructions: recipe.instructions || [],
+      photo_path: recipe.photoPath || null
+    }).select().single();
+    if (res.error) throw res.error;
+    return rowToRecipe(res.data);
+  }
+
+  async function updateRecipeRow(id, recipe){
+    var res = await sb.from('recipes').update({
+      name: recipe.name,
+      category: recipe.category || null,
+      time_minutes: recipe.time || null,
+      ingredients: recipe.ingredients || [],
+      instructions: recipe.instructions || [],
+      photo_path: recipe.photoPath || null
+    }).eq('id', id).select().single();
+    if (res.error) throw res.error;
+    return rowToRecipe(res.data);
+  }
+
+  async function deleteRecipeRow(id){
+    var res = await sb.from('recipes').delete().eq('id', id);
+    if (res.error) throw res.error;
+  }
+
+  // Records that the wheel just picked this recipe, so "avoid recent
+  // repeats" filtering knows to skip it for a few days.
+  async function markRecipePicked(id){
+    var now = new Date().toISOString();
+    var res = await sb.from('recipes').update({ last_picked_at: now }).eq('id', id);
+    if (res.error) throw res.error;
+    return now;
+  }
+
+  // ---------------------------------------------------------------
+  // Recipe photos (Supabase Storage)
+  // ---------------------------------------------------------------
+  var PHOTO_BUCKET = 'recipe-photos';
+  var MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
+
+  function isValidPhotoFile(file){
+    if(!file) return false;
+    var okType = !!file.type && file.type.indexOf('image/') === 0;
+    var okSize = file.size <= MAX_PHOTO_BYTES;
+    return okType && okSize;
+  }
+
+  function photoUrlFor(path){
+    if(!path || !sb) return null;
+    var res = sb.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+    return res && res.data ? res.data.publicUrl : null;
+  }
+
+  async function uploadRecipePhoto(userId, file){
+    var ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    var randomId = (window.crypto && window.crypto.randomUUID)
+      ? window.crypto.randomUUID()
+      : (Date.now() + '-' + Math.random().toString(36).slice(2));
+    var path = userId + '/' + randomId + '.' + ext;
+    var res = await sb.storage.from(PHOTO_BUCKET).upload(path, file, { cacheControl: '3600', upsert: false });
+    if(res.error) throw res.error;
+    return path;
+  }
+
+  async function deleteRecipePhoto(path){
+    if(!path) return;
+    try { await sb.storage.from(PHOTO_BUCKET).remove([path]); }
+    catch(e){ console.error('Could not remove old photo:', e); }
+  }
+
+  async function fetchWeeklyPlan(){
+    var res = await sb.from('weekly_plan').select('day, recipe_id');
+    if (res.error) throw res.error;
+    var plan = {};
+    DAYS.forEach(function(d){ plan[d] = null; });
+    (res.data || []).forEach(function(row){ plan[row.day] = row.recipe_id; });
+    return plan;
+  }
+
+  async function setPlanEntry(userId, day, recipeId){
+    var res = await sb.from('weekly_plan').upsert(
+      { user_id: userId, day: day, recipe_id: recipeId },
+      { onConflict: 'user_id,day' }
+    );
+    if (res.error) throw res.error;
+  }
+
+  // ---------------------------------------------------------------
+  // Wheel
+  // ---------------------------------------------------------------
+  var WHEEL_SIZE = 320;
+  var WHEEL_COLORS = ['#E8AE3E','#C75D43','#7FA77A','#8C5C7E','#5C8C9C','#D98E5F','#9CBF6F','#B5485A'];
+
+  function polar(cx, cy, r, angleDeg){
+    var a = (angleDeg - 90) * Math.PI / 180;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  }
+  function truncateLabel(name){
+    if(name.length <= 16) return name;
+    return name.slice(0, 14).trim() + '…';
+  }
+
+  function buildWheelSVG(recipes){
+    var n = recipes.length;
+    var cx = WHEEL_SIZE/2, cy = WHEEL_SIZE/2, r = WHEEL_SIZE/2 - 4;
+
+    if(n === 0){
+      return '<svg viewBox="0 0 ' + WHEEL_SIZE + ' ' + WHEEL_SIZE + '" xmlns="http://www.w3.org/2000/svg">'
+        + '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="#3A4F47" stroke="#F2EFE6" stroke-width="2" stroke-dasharray="6 6"/>'
+        + '</svg>';
+    }
+
+    // SVG arcs can't describe a full 360° circle (start == end point), so
+    // handle the single-recipe case with a plain <circle> element.
+    if(n === 1){
+      var color = WHEEL_COLORS[0];
+      var label = esc(truncateLabel(recipes[0].name));
+      return '<svg viewBox="0 0 ' + WHEEL_SIZE + ' ' + WHEEL_SIZE + '" xmlns="http://www.w3.org/2000/svg">'
+        + '<g id="wheel-g">'
+          + '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + color + '" stroke="#2B3B35" stroke-width="2"/>'
+          + '<text x="' + cx + '" y="' + (cy - 28) + '" text-anchor="middle" dominant-baseline="middle" font-family="Caveat" font-weight="700" font-size="18" fill="#2B3B35">' + label + '</text>'
+        + '</g>'
+        + '<circle cx="' + cx + '" cy="' + cy + '" r="44" fill="#F2EFE6" stroke="#2B3B35" stroke-width="2"/>'
+        + '</svg>';
+    }
+
+    var seg = 360 / n;
+    var paths = '', labels = '';
+
+    for(var i = 0; i < n; i++){
+      var startA = i * seg, endA = (i+1) * seg;
+      var p1 = polar(cx, cy, r, startA);
+      var p2 = polar(cx, cy, r, endA);
+      var largeArc = seg > 180 ? 1 : 0;
+      var segColor = WHEEL_COLORS[i % WHEEL_COLORS.length];
+      paths += '<path d="M' + cx + ',' + cy + ' L' + p1[0].toFixed(2) + ',' + p1[1].toFixed(2)
+        + ' A' + r + ',' + r + ' 0 ' + largeArc + ' 1 ' + p2[0].toFixed(2) + ',' + p2[1].toFixed(2)
+        + ' Z" fill="' + segColor + '" stroke="#2B3B35" stroke-width="2"/>';
+
+      var mid = startA + seg/2;
+      var labelR = r * 0.62;
+      var lp = polar(cx, cy, labelR, mid);
+      var rot = mid;
+      if(rot > 90 && rot < 270){ rot += 180; }
+      var segLabel = esc(truncateLabel(recipes[i].name));
+      labels += '<text x="' + lp[0].toFixed(2) + '" y="' + lp[1].toFixed(2) + '" '
+        + 'transform="rotate(' + rot.toFixed(2) + ' ' + lp[0].toFixed(2) + ' ' + lp[1].toFixed(2) + ')" '
+        + 'text-anchor="middle" dominant-baseline="middle" '
+        + 'font-family="Caveat" font-weight="700" font-size="15" fill="#2B3B35">' + segLabel + '</text>';
+    }
+
+    return '<svg viewBox="0 0 ' + WHEEL_SIZE + ' ' + WHEEL_SIZE + '" xmlns="http://www.w3.org/2000/svg">'
+      + '<g id="wheel-g">' + paths + labels + '</g>'
+      + '<circle cx="' + cx + '" cy="' + cy + '" r="44" fill="#F2EFE6" stroke="#2B3B35" stroke-width="2"/>'
+      + '</svg>';
+  }
+
+  var AVOID_REPEAT_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+
+  // Computes which recipes are eligible to spin right now, given the
+  // active category/time filters and the "avoid recent repeats" toggle.
+  function getSpinPool(){
+    var byFilters = state.recipes.filter(function(r){
+      if(state.spinFilters.category && r.category !== state.spinFilters.category) return false;
+      if(state.spinFilters.maxTime && !(r.time != null && r.time <= state.spinFilters.maxTime)) return false;
+      return true;
+    });
+
+    var finalPool = byFilters;
+    var recencyRelaxed = false;
+
+    if(state.spinFilters.avoidRecent && byFilters.length > 0){
+      var now = Date.now();
+      var notRecent = byFilters.filter(function(r){
+        if(!r.lastPickedAt) return true;
+        return (now - new Date(r.lastPickedAt).getTime()) > AVOID_REPEAT_MS;
+      });
+      if(notRecent.length > 0){
+        finalPool = notRecent;
+      } else {
+        recencyRelaxed = true; // everything matching filters was picked recently
+      }
+    }
+
+    return {
+      pool: finalPool,
+      matchingFilterCount: byFilters.length,
+      recencyRelaxed: recencyRelaxed
+    };
+  }
+
+  function renderCategoryFilterOptions(){
+    var sel = document.getElementById('filter-category');
+    var categories = Array.from(new Set(
+      state.recipes.map(function(r){ return r.category; }).filter(Boolean)
+    )).sort();
+    var current = state.spinFilters.category;
+    if(current && categories.indexOf(current) === -1){ current = ''; state.spinFilters.category = ''; }
+    sel.innerHTML = '<option value="">All categories</option>' + categories.map(function(c){
+      return '<option value="' + esc(c) + '"' + (c === current ? ' selected' : '') + '>' + esc(c) + '</option>';
+    }).join('');
+  }
+
+  function renderWheel(){
+    renderCategoryFilterOptions();
+    var info = getSpinPool();
+
+    var wrap = document.getElementById('wheel-wrap');
+    wrap.innerHTML = buildWheelSVG(info.pool);
+    var g = document.getElementById('wheel-g');
+    if(g){ g.style.transform = 'rotate(' + state.rotation + 'deg)'; }
+
+    var spinBtn = document.getElementById('spin-btn');
+    var empty = document.getElementById('spin-empty');
+    var emptyText = empty.querySelector('.empty-text');
+    var addBtn = empty.querySelector('[data-goto-tab]');
+    var note = document.getElementById('spin-pool-note');
+
+    if(state.recipes.length === 0){
+      spinBtn.classList.add('hidden');
+      emptyText.textContent = 'Your wheel is empty. Add a recipe to start spinning for dinner ideas.';
+      addBtn.classList.remove('hidden');
+      empty.classList.remove('hidden');
+      document.getElementById('result-card').classList.add('hidden');
+      note.textContent = '';
+    } else if(info.pool.length === 0){
+      spinBtn.classList.add('hidden');
+      emptyText.textContent = 'No recipes match these filters. Try widening them.';
+      addBtn.classList.add('hidden');
+      empty.classList.remove('hidden');
+      note.textContent = '';
+    } else {
+      spinBtn.classList.remove('hidden');
+      empty.classList.add('hidden');
+      if(info.recencyRelaxed){
+        note.textContent = "Spinning from all " + info.pool.length + " matching recipes — looks like you've cooked them all recently!";
+      } else if(info.pool.length < state.recipes.length){
+        note.textContent = 'Spinning from ' + info.pool.length + ' of ' + state.recipes.length + ' recipes.';
+      } else {
+        note.textContent = '';
+      }
+    }
+  }
+
+  document.getElementById('filter-category').addEventListener('change', function(e){
+    state.spinFilters.category = e.target.value;
+    renderWheel();
+  });
+  document.getElementById('filter-time').addEventListener('change', function(e){
+    state.spinFilters.maxTime = parseInt(e.target.value, 10) || 0;
+    renderWheel();
+  });
+  document.getElementById('filter-avoid-recent').addEventListener('change', function(e){
+    state.spinFilters.avoidRecent = e.target.checked;
+    renderWheel();
+  });
+
+  function spinWheelAnim(recipes, currentRotation){
+    return new Promise(function(resolve){
+      var n = recipes.length;
+      var winnerIndex = Math.floor(Math.random() * n);
+      var seg = 360 / n;
+      var thetaWinner = winnerIndex * seg + seg/2;
+
+      var spins = 4 + Math.floor(Math.random() * 3); // 4-6 full turns
+      var targetMod = ((-thetaWinner) % 360 + 360) % 360;
+      var base = currentRotation - (currentRotation % 360);
+      var newRotation = base + 360 * spins + targetMod;
+      if(newRotation <= currentRotation){ newRotation += 360; }
+
+      var g = document.getElementById('wheel-g');
+      g.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.1, 0.99)';
+      void g.offsetWidth;
+      g.style.transform = 'rotate(' + newRotation + 'deg)';
+
+      var done = false;
+      function finish(){
+        if(done) return;
+        done = true;
+        resolve({ recipe: recipes[winnerIndex], newRotation: newRotation });
+      }
+      g.addEventListener('transitionend', finish, { once: true });
+      setTimeout(finish, 4400);
+    });
+  }
+
+  async function doSpin(onLanding){
+    var info = getSpinPool();
+    if(info.pool.length === 0 || state.spinning) return;
+    state.spinning = true;
+    var spinBtn = document.getElementById('spin-btn');
+    if(spinBtn){ spinBtn.disabled = true; }
+
+    var result = await spinWheelAnim(info.pool, state.rotation);
+    state.rotation = result.newRotation;
+    state.spinning = false;
+    if(spinBtn){ spinBtn.disabled = false; }
+
+    try {
+      var pickedAt = await markRecipePicked(result.recipe.id);
+      var match = recipeById(result.recipe.id);
+      if(match) match.lastPickedAt = pickedAt;
+    } catch(err){ console.error(err); }
+
+    onLanding(result.recipe);
+  }
+
+  document.getElementById('spin-btn').addEventListener('click', function(){
+    doSpin(function(recipe){ showResult(recipe); renderWheel(); });
+  });
+
+  function recipeCardHTML(recipe){
+    var ingredients = (recipe.ingredients || []).map(function(i){ return '<li>' + esc(i) + '</li>'; }).join('');
+    var steps = (recipe.instructions || []).map(function(s){ return '<li>' + esc(s) + '</li>'; }).join('');
+    var photoUrl = photoUrlFor(recipe.photoPath);
+    return ''
+      + (photoUrl ? '<img class="recipe-photo" src="' + esc(photoUrl) + '" alt="' + esc(recipe.name) + '">' : '')
+      + '<h3>' + esc(recipe.name) + '</h3>'
+      + '<div class="recipe-meta">'
+        + (recipe.category ? '<span class="badge cat">' + esc(recipe.category) + '</span>' : '')
+        + (recipe.time ? '<span class="badge time">⏱ ' + esc(recipe.time) + ' min</span>' : '')
+      + '</div>'
+      + (ingredients ? '<h4>Ingredients</h4><ul>' + ingredients + '</ul>' : '')
+      + (steps ? '<h4>Instructions</h4><ol>' + steps + '</ol>' : '');
+  }
+
+  function showResult(recipe){
+    var card = document.getElementById('result-card');
+    card.innerHTML = recipeCardHTML(recipe);
+    card.classList.remove('hidden');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ---------------------------------------------------------------
+  // Auth UI
+  // ---------------------------------------------------------------
+  var loginView = document.getElementById('login-view');
+  var mainView = document.getElementById('main-view');
+  var tabLogin = document.getElementById('tab-login');
+  var tabSignup = document.getElementById('tab-signup');
+  var authForm = document.getElementById('auth-form');
+  var authError = document.getElementById('auth-error');
+  var authMessage = document.getElementById('auth-message');
+  var authSubmit = document.getElementById('auth-submit');
+  var forgotBtn = document.getElementById('forgot-password-btn');
+  var resetCard = document.getElementById('reset-card');
+  var resetForm = document.getElementById('reset-form');
+  var resetError = document.getElementById('reset-error');
+
+  var authMode = 'login';
+
+  function setAuthMode(mode){
+    authMode = mode;
+    tabLogin.classList.toggle('active', mode === 'login');
+    tabSignup.classList.toggle('active', mode === 'signup');
+    authSubmit.textContent = mode === 'login' ? 'Log in' : 'Create account';
+    forgotBtn.classList.toggle('hidden', mode !== 'login');
+    authError.classList.add('hidden');
+    authMessage.classList.add('hidden');
+  }
+  tabLogin.addEventListener('click', function(){ setAuthMode('login'); });
+  tabSignup.addEventListener('click', function(){ setAuthMode('signup'); });
+
+  authForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    if(!isConfigured) return;
+    authError.classList.add('hidden');
+    authMessage.classList.add('hidden');
+
+    var email = document.getElementById('auth-email').value.trim();
+    var password = document.getElementById('auth-password').value;
+    if(!email || !password) return;
+
+    authSubmit.disabled = true;
+    authSubmit.textContent = 'Please wait…';
+
+    try {
+      if(authMode === 'signup'){
+        var signUpRes = await signUp(email, password);
+        if(signUpRes.error) throw signUpRes.error;
+
+        if(signUpRes.data.session){
+          await startApp(signUpRes.data.session);
+        } else {
+          authMessage.textContent = 'Account created! Check your email to confirm your address, then log in.';
+          authMessage.classList.remove('hidden');
+          authForm.reset();
+          setAuthMode('login');
+        }
+      } else {
+        var signInRes = await signIn(email, password);
+        if(signInRes.error) throw signInRes.error;
+        await startApp(signInRes.data.session);
+      }
+    } catch(err){
+      authError.textContent = err.message || 'Something went wrong. Please try again.';
+      authError.classList.remove('hidden');
+    } finally {
+      authSubmit.disabled = false;
+      authSubmit.textContent = authMode === 'login' ? 'Log in' : 'Create account';
+    }
+  });
+
+  forgotBtn.addEventListener('click', async function(){
+    var email = document.getElementById('auth-email').value.trim();
+    if(!email){
+      authError.textContent = 'Enter your email above first, then click "Forgot password?"';
+      authError.classList.remove('hidden');
+      return;
+    }
+    try {
+      var res = await requestPasswordReset(email);
+      if(res.error) throw res.error;
+      authMessage.textContent = 'Check your email for a password reset link.';
+      authMessage.classList.remove('hidden');
+      authError.classList.add('hidden');
+    } catch(err){
+      authError.textContent = err.message || 'Could not send reset email.';
+      authError.classList.remove('hidden');
+    }
+  });
+
+  resetForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    resetError.classList.add('hidden');
+    var newPassword = document.getElementById('reset-password').value;
+    try {
+      var res = await updatePassword(newPassword);
+      if(res.error) throw res.error;
+      showToast('Password updated — you are now logged in.');
+      resetCard.classList.add('hidden');
+      authForm.closest('.login-card').classList.remove('hidden');
+      var session = await getSession();
+      if(session) await startApp(session);
+    } catch(err){
+      resetError.textContent = err.message || 'Could not update password.';
+      resetError.classList.remove('hidden');
+    }
+  });
+
+  document.getElementById('logout-btn').addEventListener('click', async function(){
+    await signOut();
+    state.user = null;
+    state.recipes = [];
+    state.weeklyPlan = {};
+    document.getElementById('result-card').classList.add('hidden');
+    mainView.classList.add('hidden');
+    loginView.classList.remove('hidden');
+    authForm.closest('.login-card').classList.remove('hidden');
+    resetCard.classList.add('hidden');
+  });
+
+  if(sb){
+    sb.auth.onAuthStateChange(function(event){
+      if(event === 'PASSWORD_RECOVERY'){
+        authForm.closest('.login-card').classList.add('hidden');
+        resetCard.classList.remove('hidden');
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // Boot
+  // ---------------------------------------------------------------
+  (async function boot(){
+    if(!sb) return;
+    var session = await getSession();
+    if(session){ await startApp(session); }
+  })();
+
+  async function startApp(session){
+    state.user = session.user;
+    document.getElementById('user-email-label').textContent = session.user.email;
+    loginView.classList.add('hidden');
+    mainView.classList.remove('hidden');
+    authForm.reset();
+
+    try {
+      await ensureDefaultRecipes(session.user.id);
+      state.recipes = await fetchRecipes();
+      state.weeklyPlan = await fetchWeeklyPlan();
+    } catch(err){
+      console.error(err);
+      showToast('Could not load your data — check your connection and try again.');
+    }
+    renderAll();
+  }
+
+  // ---------------------------------------------------------------
+  // Tabs
+  // ---------------------------------------------------------------
+  var tabs = document.querySelectorAll('.tab');
+  var panels = document.querySelectorAll('.tab-panel');
+  function switchTab(name){
+    tabs.forEach(function(t){ t.classList.toggle('active', t.dataset.tab === name); });
+    panels.forEach(function(p){ p.classList.toggle('active', p.id === 'tab-' + name); });
+  }
+  tabs.forEach(function(t){ t.addEventListener('click', function(){ switchTab(t.dataset.tab); }); });
+  document.querySelectorAll('[data-goto-tab]').forEach(function(btn){
+    btn.addEventListener('click', function(){ switchTab(btn.dataset.gotoTab); });
+  });
+
+  // ---------------------------------------------------------------
+  // Recipes tab
+  // ---------------------------------------------------------------
+  var formPanel = document.getElementById('recipe-form-panel');
+  var recipeForm = document.getElementById('recipe-form');
+  var formTitle = document.getElementById('recipe-form-title');
+  var photoInput = document.getElementById('recipe-photo');
+  var photoPreviewWrap = document.getElementById('recipe-photo-preview-wrap');
+  var photoPreviewImg = document.getElementById('recipe-photo-preview');
+  var photoRemoveBtn = document.getElementById('recipe-photo-remove-btn');
+  var photoPathInput = document.getElementById('recipe-photo-path');
+  var pendingPhotoFile = null; // file staged for upload on save
+  var removeExistingPhoto = false; // flag: user wants the old photo deleted
+
+  document.getElementById('add-recipe-btn').addEventListener('click', function(){ openRecipeForm(null); });
+  document.getElementById('recipe-cancel-btn').addEventListener('click', closeRecipeForm);
+
+  // Live preview when user picks a file
+  photoInput.addEventListener('change', function(){
+    var file = photoInput.files[0];
+    if(!file) return;
+    if(!isValidPhotoFile(file)){
+      showToast('Photo must be an image under 5 MB.');
+      photoInput.value = '';
+      return;
+    }
+    pendingPhotoFile = file;
+    removeExistingPhoto = false;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      photoPreviewImg.src = ev.target.result;
+      photoPreviewWrap.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  photoRemoveBtn.addEventListener('click', function(){
+    pendingPhotoFile = null;
+    removeExistingPhoto = true;
+    photoInput.value = '';
+    photoPathInput.value = '';
+    photoPreviewWrap.classList.add('hidden');
+    photoPreviewImg.src = '';
+  });
+
+  function openRecipeForm(recipeId){
+    recipeForm.reset();
+    pendingPhotoFile = null;
+    removeExistingPhoto = false;
+    photoPreviewWrap.classList.add('hidden');
+    photoPreviewImg.src = '';
+    photoPathInput.value = '';
+    document.getElementById('recipe-id').value = recipeId || '';
+
+    if(recipeId){
+      var r = recipeById(recipeId);
+      if(r){
+        formTitle.textContent = 'Edit recipe';
+        document.getElementById('recipe-name').value = r.name || '';
+        document.getElementById('recipe-category').value = r.category || '';
+        document.getElementById('recipe-time').value = r.time || '';
+        document.getElementById('recipe-ingredients').value = (r.ingredients || []).join('\n');
+        document.getElementById('recipe-instructions').value = (r.instructions || []).join('\n');
+        photoPathInput.value = r.photoPath || '';
+        if(r.photoPath){
+          var url = photoUrlFor(r.photoPath);
+          if(url){
+            photoPreviewImg.src = url;
+            photoPreviewWrap.classList.remove('hidden');
+          }
+        }
+      }
+    } else {
+      formTitle.textContent = 'Add a recipe';
+    }
+    formPanel.classList.remove('hidden');
+    formPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function closeRecipeForm(){
+    formPanel.classList.add('hidden');
+    recipeForm.reset();
+    pendingPhotoFile = null;
+    removeExistingPhoto = false;
+    photoPreviewWrap.classList.add('hidden');
+    photoPreviewImg.src = '';
+    photoPathInput.value = '';
+  }
+
+  recipeForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    var saveBtn = document.getElementById('recipe-save-btn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+
+    var id = document.getElementById('recipe-id').value;
+    var name = document.getElementById('recipe-name').value.trim();
+    if(!name){ saveBtn.disabled = false; saveBtn.textContent = 'Save recipe'; return; }
+
+    var existingPath = photoPathInput.value || null;
+    var finalPhotoPath = existingPath;
+
+    try {
+      // Handle photo: upload new, or remove old if requested
+      if(pendingPhotoFile){
+        if(existingPath) await deleteRecipePhoto(existingPath);
+        finalPhotoPath = await uploadRecipePhoto(state.user.id, pendingPhotoFile);
+      } else if(removeExistingPhoto && existingPath){
+        await deleteRecipePhoto(existingPath);
+        finalPhotoPath = null;
+      }
+
+      var data = {
+        name: name,
+        category: document.getElementById('recipe-category').value.trim(),
+        time: parseInt(document.getElementById('recipe-time').value, 10) || null,
+        ingredients: linesToArray(document.getElementById('recipe-ingredients').value),
+        instructions: linesToArray(document.getElementById('recipe-instructions').value),
+        photoPath: finalPhotoPath
+      };
+
+      if(id){
+        var updated = await updateRecipeRow(id, data);
+        var idx = state.recipes.findIndex(function(r){ return r.id === id; });
+        if(idx !== -1) state.recipes[idx] = updated;
+        showToast('Recipe updated');
+      } else {
+        var created = await createRecipe(state.user.id, data);
+        state.recipes.push(created);
+        showToast('Recipe added');
+      }
+      closeRecipeForm();
+      renderRecipes();
+      renderWheel();
+      renderWeeklyPlan();
+    } catch(err){
+      console.error(err);
+      showToast('Could not save the recipe — please try again.');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save recipe';
+    }
+  });
+
+  async function deleteRecipeHandler(id){
+    var r = recipeById(id);
+    if(!r) return;
+    if(!confirm('Delete "' + r.name + '"? This cannot be undone.')) return;
+
+    try {
+      if(r.photoPath) await deleteRecipePhoto(r.photoPath);
+      await deleteRecipeRow(id);
+      state.recipes = state.recipes.filter(function(x){ return x.id !== id; });
+      state.weeklyPlan = await fetchWeeklyPlan();
+      renderRecipes();
+      renderWheel();
+      renderWeeklyPlan();
+      document.getElementById('result-card').classList.add('hidden');
+      showToast('Recipe deleted');
+    } catch(err){
+      console.error(err);
+      showToast('Could not delete the recipe — please try again.');
+    }
+  }
+
+
+  function renderRecipes(){
+    var list = document.getElementById('recipes-list');
+    if(state.recipes.length === 0){
+      list.innerHTML = '<div class="empty-state">No recipes yet. Add your first dish to get the wheel spinning.</div>';
+      return;
+    }
+    list.innerHTML = state.recipes.map(function(r){
+      var meta = [];
+      if(r.category) meta.push('<span class="badge cat">' + esc(r.category) + '</span>');
+      if(r.time) meta.push('<span class="badge time">⏱ ' + esc(r.time) + ' min</span>');
+      var photoUrl = photoUrlFor(r.photoPath);
+      var thumbHTML = photoUrl
+        ? '<img class="recipe-thumb" src="' + esc(photoUrl) + '" alt="' + esc(r.name) + '">'
+        : '';
+      var ingredients = (r.ingredients || []).map(function(i){ return '<li>' + esc(i) + '</li>'; }).join('');
+      var steps = (r.instructions || []).map(function(s){ return '<li>' + esc(s) + '</li>'; }).join('');
+      return ''
+        + '<div class="recipe-item" data-id="' + r.id + '">'
+          + '<div class="recipe-item-head" data-toggle="' + r.id + '">'
+            + '<div class="recipe-item-main">'
+              + thumbHTML
+              + '<div><div class="recipe-item-title">' + esc(r.name) + '</div>'
+              + '<div class="recipe-meta" style="margin:6px 0 0">' + meta.join('') + '</div></div>'
+            + '</div>'
+            + '<div class="recipe-item-actions">'
+              + '<button class="btn btn-outline" data-edit="' + r.id + '">Edit</button>'
+              + '<button class="btn btn-danger" data-delete="' + r.id + '">Delete</button>'
+            + '</div>'
+          + '</div>'
+          + '<div class="recipe-item-body hidden">'
+            + (photoUrl ? '<img class="recipe-photo" src="' + esc(photoUrl) + '" alt="' + esc(r.name) + '">' : '')
+            + (ingredients ? '<h4>Ingredients</h4><ul>' + ingredients + '</ul>' : '')
+            + (steps ? '<h4>Instructions</h4><ol>' + steps + '</ol>' : '')
+          + '</div>'
+        + '</div>';
+    }).join('');
+
+    list.querySelectorAll('[data-toggle]').forEach(function(head){
+      head.addEventListener('click', function(ev){
+        if(ev.target.closest('[data-edit]') || ev.target.closest('[data-delete]')) return;
+        head.parentElement.querySelector('.recipe-item-body').classList.toggle('hidden');
+      });
+    });
+    list.querySelectorAll('[data-edit]').forEach(function(btn){
+      btn.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        openRecipeForm(btn.dataset.edit);
+      });
+    });
+    list.querySelectorAll('[data-delete]').forEach(function(btn){
+      btn.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        deleteRecipeHandler(btn.dataset.delete);
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // Weekly plan tab
+  // ---------------------------------------------------------------
+  function recipeDetailHTML(recipe){
+    var ingredients = (recipe.ingredients || []).map(function(i){ return '<li>' + esc(i) + '</li>'; }).join('');
+    var steps = (recipe.instructions || []).map(function(s){ return '<li>' + esc(s) + '</li>'; }).join('');
+    var meta = [];
+    if(recipe.category) meta.push('<span class="badge cat">' + esc(recipe.category) + '</span>');
+    if(recipe.time) meta.push('<span class="badge time">⏱ ' + esc(recipe.time) + ' min</span>');
+    var photoUrl = photoUrlFor(recipe.photoPath);
+    return ''
+      + (photoUrl ? '<img class="day-photo" src="' + esc(photoUrl) + '" alt="' + esc(recipe.name) + '">' : '')
+      + '<div class="recipe-meta">' + meta.join('') + '</div>'
+      + (ingredients ? '<h5>Ingredients</h5><ul>' + ingredients + '</ul>' : '')
+      + (steps ? '<h5>Instructions</h5><ol>' + steps + '</ol>' : '');
+  }
+
+  function renderWeeklyPlan(){
+    var grid = document.getElementById('plan-grid');
+    grid.innerHTML = DAYS.map(function(day){
+      var pickedId = state.weeklyPlan[day];
+      var picked = pickedId ? recipeById(pickedId) : null;
+      if(pickedId && !picked) pickedId = null;
+
+      var options = '<option value="">No dish picked</option>' + state.recipes.map(function(r){
+        return '<option value="' + r.id + '"' + (r.id === pickedId ? ' selected' : '') + '>' + esc(r.name) + '</option>';
+      }).join('');
+
+      var dishLine = picked
+        ? '<div class="day-dish">' + esc(picked.name) + '</div>'
+        : '<div class="day-dish empty">No dish picked</div>';
+
+      var detail = picked
+        ? '<div class="day-recipe-detail hidden" data-detail="' + day + '">' + recipeDetailHTML(picked) + '</div>'
+        : '';
+
+      var disabledAttr = state.recipes.length === 0 ? ' disabled' : '';
+
+      return ''
+        + '<div class="day-card" data-day="' + day + '">'
+          + '<div class="day-name">' + day + '</div>'
+          + dishLine
+          + '<select class="day-select" data-day-select="' + day + '"' + disabledAttr + '>' + options + '</select>'
+          + '<div class="day-actions">'
+            + '<button class="btn btn-secondary" data-day-spin="' + day + '"' + disabledAttr + '>Spin</button>'
+            + (picked ? '<button class="btn btn-outline" data-day-view="' + day + '">Recipe</button>' : '')
+            + '<button class="btn btn-outline" data-day-clear="' + day + '"' + (picked ? '' : ' disabled') + '>Clear</button>'
+          + '</div>'
+          + detail
+        + '</div>';
+    }).join('');
+
+    grid.querySelectorAll('[data-day-select]').forEach(function(sel){
+      sel.addEventListener('change', async function(){
+        var day = sel.dataset.daySelect;
+        var recipeId = sel.value || null;
+        try {
+          await setPlanEntry(state.user.id, day, recipeId);
+          state.weeklyPlan[day] = recipeId;
+          renderWeeklyPlan();
+          showToast(day + "'s plan updated");
+        } catch(err){
+          console.error(err);
+          showToast('Could not update the plan — please try again.');
+        }
+      });
+    });
+
+    grid.querySelectorAll('[data-day-clear]').forEach(function(btn){
+      btn.addEventListener('click', async function(){
+        var day = btn.dataset.dayClear;
+        try {
+          await setPlanEntry(state.user.id, day, null);
+          state.weeklyPlan[day] = null;
+          renderWeeklyPlan();
+          showToast(day + "'s plan cleared");
+        } catch(err){
+          console.error(err);
+          showToast('Could not clear the plan — please try again.');
+        }
+      });
+    });
+
+    grid.querySelectorAll('[data-day-view]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var detail = grid.querySelector('[data-detail="' + btn.dataset.dayView + '"]');
+        if(detail) detail.classList.toggle('hidden');
+      });
+    });
+
+    grid.querySelectorAll('[data-day-spin]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var day = btn.dataset.daySpin;
+        if(state.recipes.length === 0) return;
+        switchTab('spin');
+        doSpin(async function(recipe){
+          showResult(recipe);
+          try {
+            await setPlanEntry(state.user.id, day, recipe.id);
+            state.weeklyPlan[day] = recipe.id;
+            renderWeeklyPlan();
+            showToast(day + ': ' + recipe.name);
+          } catch(err){
+            console.error(err);
+            showToast('Spun, but could not save it to the plan.');
+          }
+        });
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // Render all
+  // ---------------------------------------------------------------
+  function renderAll(){
+    renderWheel();
+    renderRecipes();
+    renderWeeklyPlan();
+  }
+
+})();
+</script>
+</body>
+</html>
